@@ -1,0 +1,18 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environment
+flaskApp/Lib/
+flaskApp/Scripts/
+flaskApp/Include/
+*.venv
+.env
+
+# IDE/editor files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
