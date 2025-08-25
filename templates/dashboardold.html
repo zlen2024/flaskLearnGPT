@@ -1,0 +1,156 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="chat-container flex h-[80vh] border rounded-lg overflow-hidden shadow-lg bg-white">
+
+  <!-- Sidebar -->
+  <div class="sidebar w-64 bg-gray-900 text-white flex flex-col">
+    <h2 class="text-xl font-bold mb-4">MyChat</h2>
+    <button class="new-chat bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mb-4">
+      + New Chat
+    </button>
+    <div class="sessions flex-1 overflow-y-auto">
+      <ul id="session-list" class="space-y-2">
+        {% for session in sessions %}
+          <li class="session-item p-2 rounded-md hover:bg-gray-700 cursor-pointer"
+              data-id="{{ session.id }}">
+            <p class="text-sm">{{ session.title }}</p>
+            <p class="text-xs text-gray-400">Created: {{ session.created_at }}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <!-- Main Chat Area -->
+  <div class="chat-main flex flex-col flex-1 bg-gray-50">
+    <div id="chat-window" class="chat-window flex-1 overflow-y-auto p-4 space-y-2">
+      <!-- Welcome screen -->
+      <div class="welcome-screen text-center text-gray-600 mt-20">
+        <h2 class="text-2xl font-bold mb-2">👋 Welcome to MyChat</h2>
+        <p class="mb-4">Select a session from the left or start a new chat.</p>
+        <button id="start-chat-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+          + Start New Chat
+        </button>
+      </div>
+    </div>
+
+    <!-- Input Box -->
+    <form id="chat-form" class="chat-input flex p-3 border-t bg-white">
+      <input type="text" id="chat-input" name="message" placeholder="Type your message..."
+             class="flex-1 p-2 border rounded-md focus:outline-none focus:ring focus:ring-blue-300"
+             required>
+      <button type="submit"
+              class="ml-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+        Send
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+  const socket = io();
+  let currentSessionId = null;
+
+  // Add message bubble
+  function addMessage(content, role) {
+    const chatWindow = document.getElementById("chat-window");
+    const div = document.createElement("div");
+    div.classList.add("max-w-[75%]", "px-4", "py-2", "rounded-lg", "mb-2", "whitespace-pre-wrap");
+
+    if (role === "user") {
+      div.classList.add("bg-blue-600","text-white","ml-auto");
+      div.textContent = content;
+    } else {
+      div.classList.add("bg-gray-200","text-gray-900","mr-auto","shadow-sm","prose","prose-sm","max-w-none");
+      div.innerHTML = marked.parse(content);
+    }
+
+    chatWindow.appendChild(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  // ====== New Chat ======
+  document.querySelector(".new-chat").addEventListener("click", function() {
+    fetch("/new_session", { method: "POST" })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          const sessionList = document.querySelector("#session-list");
+          const newLi = document.createElement("li");
+          newLi.classList.add("session-item","p-2","rounded-md","hover:bg-gray-700","cursor-pointer");
+          newLi.dataset.id = data.id;
+          newLi.innerHTML = `<p class="text-sm">${data.title}</p>
+                             <p class="text-xs text-gray-400">${data.created_at}</p>`;
+          sessionList.appendChild(newLi);
+
+          newLi.addEventListener("click", () => joinSession(data.id));
+        }
+      })
+      .catch(err => console.error("Error:", err));
+  });
+
+  // ====== Join Session ======
+  function joinSession(sessionId) {
+    currentSessionId = sessionId;
+    document.getElementById("chat-window").innerHTML = "";
+    socket.emit("join_session", { session_id: sessionId });
+  }
+
+  // Load history
+  socket.on("load_messages", function(messages) {
+    const chatWindow = document.getElementById("chat-window");
+    chatWindow.innerHTML = "";
+    messages.forEach(msg => addMessage(msg.content, msg.role));
+  });
+
+  // Receive live messages
+  socket.on("receive_message", function(msg) {
+    addMessage(msg.content, msg.role);
+  });
+
+  // Send message
+  document.getElementById("chat-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const input = document.getElementById("chat-input");
+    if (input.value && currentSessionId) {
+      socket.emit("send_message", {
+        content: input.value,
+        session_id: currentSessionId,
+        role: "user"
+      });
+      input.value = "";
+    } else {
+      alert("Select a session first.");
+    }
+  });
+
+  // Existing sessions
+  document.querySelectorAll(".session-item").forEach(item => {
+    item.addEventListener("click", function() {
+      joinSession(this.dataset.id);
+    });
+  });
+</script>
+
+<!-- Markdown table styling -->
+<style>
+  .prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+  .prose th, .prose td {
+    border: 1px solid #d1d5db; /* Tailwind gray-300 */
+    padding: 0.5rem;
+    text-align: left;
+  }
+  .prose th {
+    background: #f3f4f6; /* Tailwind gray-100 */
+    font-weight: bold;
+  }
+</style>
+{% endblock %}

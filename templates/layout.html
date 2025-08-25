@@ -1,0 +1,360 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Simple Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f4f6f9;
+      color: #333;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 4rem auto;
+      padding: 0 1rem;
+    }
+
+    /* Navigation */
+    nav {
+      background: #007bff;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    nav .brand {
+      color: white;
+      font-weight: bold;
+      font-size: 1.2rem;
+      text-decoration: none;
+    }
+
+    nav .links a {
+      color: white;
+      margin-left: 1rem;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+
+    nav .links a:hover {
+      opacity: 0.8;
+    }
+
+    /* Flash messages */
+    .flash.success { background: #28a745; }
+.flash.danger  { background: #dc3545; }
+.flash.warning { background: #ffc107; color: #333; }
+.flash.info    { background: #17a2b8; }
+
+    /* Form card */
+    .form-card {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 400px;
+      margin: 2rem auto;
+      text-align: center;
+    }
+
+    .form-card h2 {
+      margin-bottom: 1.5rem;
+      color: #222;
+    }
+
+    .form-group {
+      margin-bottom: 1.2rem;
+      text-align: left;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-weight: bold;
+      font-size: 0.95rem;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 0.7rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    .btn-primary {
+      display: inline-block;
+      width: 100%;
+      padding: 0.8rem;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+
+    .btn-primary:hover {
+      background: #0056b3;
+    }
+
+    .switch-link {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .switch-link a {
+      color: #007bff;
+      text-decoration: none;
+    }
+
+    .switch-link a:hover {
+      text-decoration: underline;
+    }
+
+    /* Chat Layout */
+.chat-container {
+  display: flex;
+  height: calc(100vh - 64px); /* subtract navbar height */
+  width: 100%;
+  border-top: 1px solid #ddd;
+  background: #fff;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 250px;
+  background: #202123;
+  color: #fff;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar h2 {
+  margin: 0 0 1rem;
+  font-size: 1.2rem;
+}
+
+.new-chat {
+  background: #007bff;
+  border: none;
+  padding: 0.6rem;
+  border-radius: 6px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  transition: background 0.3s;
+}
+
+.new-chat:hover {
+  background: #0056b3;
+}
+
+.sessions {
+  flex: 1;
+  overflow-y: auto;
+  
+}
+
+.session {
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.3rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.session:hover {
+  background: #343536;
+}
+
+/* Chat Main */
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #f4f6f9;
+}
+
+.chat-window {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+
+  display: flex;          /* make it a flex container */
+  flex-direction: column; /* stack messages vertically */
+}
+
+
+.message.user {
+  background: #007bff;
+  color: white;
+  align-self: flex-end; /* align left */
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  margin: 0.25rem 0;
+  max-width: 60%;
+}
+
+.message.ai {
+  background: #e5e7eb;
+  color: #333;
+  align-self: flex-start; /* align right */
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  margin: 0.25rem 0;
+  max-width: 60%;
+}
+
+/* Chat Input */
+.chat-input {
+  display: flex;
+  padding: 0.8rem;
+  background: #fff;
+  border-top: 1px solid #ddd;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.chat-input button {
+  margin-left: 0.5rem;
+  padding: 0.7rem 1rem;
+  background: #007bff;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.chat-input button:hover {
+  background: #0056b3;
+}
+table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+}
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+th {
+  background: #f3f4f6;
+  text-align: left;
+}
+@keyframes fadeInOut {
+  0%   { opacity: 0; transform: translateY(-10px); }
+  10%  { opacity: 1; transform: translateY(0); }
+  90%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+
+.animate-fade-in-out {
+  animation: fadeInOut 4s ease forwards;
+}
+
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="flex justify-between items-center bg-blue-600 p-3 text-white relative">
+  
+    <!-- Left: Sidebar Toggle (only if authenticated) -->
+    {% if current_user.is_authenticated %}
+      <a href="javascript:void(0)" id="toggle-sidebar"
+         class="md:hidden p-2 bg-blue-700 hover:bg-blue-800 rounded">
+        ☰
+      </a>
+    {% endif %}
+  
+    <!-- Center: Brand -->
+    <a class="brand font-bold text-lg mx-auto md:mx-0" href="{{ url_for('index') }}">
+      MyApp
+    </a>
+  
+    <!-- Right: Dropdown Menu -->
+    <div class="relative">
+      <a href="javascript:void(0)" id="dropdown-toggle" 
+         class="px-3 py-2 bg-blue-700 rounded hover:bg-blue-800">
+        Menu ▾
+      </a>
+      <div id="dropdown-menu" 
+           class="absolute right-0 mt-2 w-40 bg-white text-black rounded shadow-lg hidden z-50">
+        <ul class="flex flex-col">
+          {% if current_user.is_authenticated %}
+            <li><a href="{{ url_for('dashboard') }}" class="block px-4 py-2 hover:bg-gray-100">Dashboard</a></li>
+            <li><a href="{{ url_for('logout') }}" class="block px-4 py-2 hover:bg-gray-100">Logout</a></li>
+          {% else %}
+            <li><a href="{{ url_for('login') }}" class="block px-4 py-2 hover:bg-gray-100">Login</a></li>
+            <li><a href="{{ url_for('register') }}" class="block px-4 py-2 hover:bg-gray-100">Register</a></li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </nav>
+  
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div id="flash-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 space-y-2 w-auto max-w-lg text-center">
+      {% for category, msg in messages %}
+        <div class="flash {{ category }} px-4 py-2 rounded shadow-md text-white animate-fade-in-out inline-block">
+          {{ msg }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+
+
+<!-- Chat or other content -->
+{% block content %}{% endblock %}
+<script>
+  const dropdownToggle = document.getElementById("dropdown-toggle");
+const dropdownMenu = document.getElementById("dropdown-menu");
+
+dropdownToggle.addEventListener("click", () => {
+  dropdownMenu.classList.toggle("hidden");
+});
+
+  document.addEventListener("click", (e) => {
+  if (!dropdownToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+    dropdownMenu.classList.add("hidden");
+  }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    const flashes = document.querySelectorAll("#flash-container .flash");
+    flashes.forEach((flash) => {
+      setTimeout(() => {
+        flash.remove();
+      }, 4000); // matches animation duration
+    });
+  });
+</script>
+  
+</body>
+</html>

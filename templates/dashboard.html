@@ -1,0 +1,206 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="chat-container">
+
+  <!-- Sidebar -->
+  <div id="sidebar" 
+  class="sidebar fixed md:static top-0 left-0 h-full w-64 bg-gray-900 text-white transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+  <button id="close-sidebar" class="mb-4 text-right text-white text-lg">✖</button>
+  <h2 class="text-xl font-bold mb-2">MyChat</h2>
+  <p id="current-session-label" class="text-gray-400 text-sm">No session selected</p>
+  <button class="new-chat bg-blue-600 px-3 py-1 mt-3 rounded">+ New Chat</button>
+  
+  <div class="sessions mt-4 overflow-y-auto">
+    <ul id="session-list">
+      {% for session in sessions %}
+        <li class="session-item p-2 hover:bg-gray-700 rounded cursor-pointer" data-id="{{ session.id }}">
+          <p>{{ session.title }} </p>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+  
+
+  <div class="chat-main">
+    <div class="chat-window" id="chat-window">
+      <div class="welcome-screen">
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        <h2 id="welcome-title" class="text-2xl md:text-3xl font-bold text-blue-600 mb-4"></h2>
+        <p id="welcome-text" class="text-gray-600 text-lg md:text-xl mb-6"></p>
+        <button id="start-chat-btn" class="hidden bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg shadow-md font-semibold transition"></button>
+      </div>
+    </div>
+  
+    <!-- Input Box -->
+    <form id="chat-form" class="chat-input">
+      <input type="text" id="chat-input" name="message" placeholder="Type your message..." required>
+      <button type="submit">Send</button>
+    </form>
+  </div>
+
+</div>
+
+<!-- Socket.IO client -->
+<script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+<script>
+  const sidebar = document.getElementById("sidebar");
+  const toggleBtn = document.getElementById("toggle-sidebar");
+  const closeBtn = document.getElementById("close-sidebar");
+  const sessionItems = document.querySelectorAll(".session-item");
+  const newChatBtn = document.querySelector(".new-chat");
+
+  toggleBtn.addEventListener("click", () => {
+    sidebar.classList.toggle("-translate-x-full");
+  });
+
+  // Close with X
+closeBtn.addEventListener("click", () => {
+  sidebar.classList.add("-translate-x-full");
+});
+
+// Close when selecting a session (on mobile only)
+sessionItems.forEach(item => {
+  item.addEventListener("click", () => {
+    if (window.innerWidth < 768) {
+      sidebar.classList.add("-translate-x-full");
+    }
+  });
+  newChatBtn.addEventListener("click", () => {
+    if (window.innerWidth < 768) {
+      sidebar.classList.add("-translate-x-full");
+    }
+  });
+  });
+
+ marked.setOptions({
+    gfm: true,       // ✅ enable GitHub Flavored Markdown
+    breaks: true,    // optional: line breaks behave like Langflow
+  });
+function typeWriter(el, text, delay = 50, callback) {
+  let i = 0;
+  function typing() {
+    if (i < text.length) {
+      el.innerHTML += text.charAt(i);
+      i++;
+      setTimeout(typing, delay);
+    } else if (callback) {
+      callback();
+    }
+  }
+  typing();
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  const titleEl = document.getElementById("welcome-title");
+  const textEl = document.getElementById("welcome-text");
+  const btn = document.getElementById("start-chat-btn");
+
+  typeWriter(titleEl, "👋 Welcome to MyChat", 70, () => {
+    typeWriter(textEl, "Select a session from the left or start a new chat.", 40, () => {
+      btn.style.display = "inline-block"; // show button after animation
+    });
+  });
+});
+
+  const socket = io();
+
+  let currentSessionId = null;
+
+  // ====== Handle New Chat ======
+  document.querySelector(".new-chat").addEventListener("click", function() {
+  // Hit /new_session route
+  fetch("/new_session", { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === "success") {
+        const sessionList = document.querySelector("#session-list");
+        const newLi = document.createElement("li");
+        newLi.classList.add(
+          "session-item",
+          "p-2",
+          "hover:bg-gray-700",
+          "rounded",
+          "cursor-pointer"
+        );
+        newLi.dataset.id = data.id;
+        newLi.innerHTML = `<p>${data.title}</p>`;
+        sessionList.appendChild(newLi);
+
+        // attach click event
+        newLi.addEventListener("click", () => joinSession(data.id));
+
+        // 🔥 auto trigger joinSession right away
+        joinSession(data.id);
+      }
+    })
+    .catch(err => console.error("Error:", err));
+});
+
+
+  
+
+  // Load history
+  socket.on("load_messages", function(messages) {
+    const chatWindow = document.getElementById("chat-window");
+    chatWindow.innerHTML = "";
+    messages.forEach(msg => {
+      const div = document.createElement("div");
+      div.classList.add("message", msg.role);
+      div.innerHTML= marked.parse(msg.content);
+      
+      chatWindow.appendChild(div);
+      
+    });
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  });
+
+  // Receive live new message
+  socket.on("receive_message", function(msg) {
+    const chatWindow = document.getElementById("chat-window");
+    const div = document.createElement("div");
+    div.classList.add("message", msg.role);
+    div.innerHTML = marked.parse(msg.content);
+    chatWindow.appendChild(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  });
+
+  // ====== Send Message ======
+  document.getElementById("chat-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const input = document.getElementById("chat-input");
+    if (input.value && currentSessionId) {
+      socket.emit("send_message", {
+        content: input.value,
+        session_id: currentSessionId,
+        role: "user"
+      });
+      input.value = "";
+    } else {
+      alert("Select a session first.");
+    }
+  });
+
+  // ====== Attach click listeners for existing sessions ======
+  document.querySelectorAll(".session-item").forEach(item => {
+    item.addEventListener("click", function() {
+      const sessionId = this.dataset.id;
+      joinSession(sessionId);
+    });
+  });
+
+  function joinSession(sessionId) {
+  currentSessionId = sessionId;
+  document.getElementById("chat-window").innerHTML = ""; // clear old
+
+  // Update label
+  const selected = document.querySelector(`.session-item[data-id='${sessionId}'] p`);
+  document.getElementById("current-session-label").innerText =
+    "Current session: " + (selected ? selected.innerText : sessionId);
+
+  socket.emit("join_session", { session_id: sessionId });
+}
+
+</script>
+{% endblock %}
